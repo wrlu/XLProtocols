@@ -112,7 +112,6 @@ def quit_program():
 # ---------------------以下代码负责绘制GUI界面---------------------
 tk = tkinter.Tk()
 tk.title("协议分析器")
-# tk.resizable(0, 0)
 # 带水平分割条的主窗体
 main_panedwindow = PanedWindow(tk, sashrelief=RAISED, sashwidth=5, orient=VERTICAL)
 

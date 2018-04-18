@@ -22,7 +22,6 @@ protocol_editor_panedwindow = PanedWindow(orient=VERTICAL, sashrelief=RAISED, sa
 protocols_tree = Treeview()
 # 当前网卡的默认网关
 default_gateway = '0.0.0.0'
-# default_gateway = [a for a in os.popen('route print').readlines() if ' 0.0.0.0 ' in a][0].split()[-3]
 # 用来终止数据包发送线程的线程事件
 stop_sending = threading.Event()
 
