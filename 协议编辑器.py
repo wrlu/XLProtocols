@@ -224,6 +224,8 @@ def send_mac_frame(entries, send_packet_button):
         mac_dst = entries[1].get()
         mac_type = int(entries[2].get(), 16)
         packet_to_send = Ether(src=mac_src, dst=mac_dst, type=mac_type)
+        packet_to_send.show()
+        
         # 开一个线程用于连续发送数据包
         t = threading.Thread(target=send_packet, args=(packet_to_send,))
         t.setDaemon(True)
@@ -297,7 +299,8 @@ def send_arp_packet(entries, send_packet_button):
         arp_pdst = entries[8].get()
         packet_to_send = ARP(hwtype=arp_hwtype, ptype=arp_ptype, hwlen=arp_hwlen, plen=arp_plen,
                              op=arp_op, hwsrc=arp_hwsrc, psrc=arp_psrc, hwdst=arp_hwdst, pdst=arp_pdst)
-
+                            
+        packet_to_send.show()
         # 开一个线程用于连续发送数据包
         t = threading.Thread(target=send_packet, args=(packet_to_send,))
         t.setDaemon(True)
@@ -341,15 +344,15 @@ def create_default_ip_packet(entries):
     """
     clear_protocol_editor(entries)
     default_ip_packet = IP()
-    entries[0].insert(0, default_ip_packet.version)
+    entries[0].insert(0, int(default_ip_packet.version))
     entries[1].insert(0, str(default_ip_packet.ihl))
-    entries[2].insert(0, default_ip_packet.tos)
+    entries[2].insert(0, int(default_ip_packet.tos))
     entries[3].insert(0, str(default_ip_packet.len))
-    entries[4].insert(0, default_ip_packet.id)
-    entries[5].insert(0, default_ip_packet.flags)
-    entries[6].insert(0, default_ip_packet.frag)
-    entries[7].insert(0, default_ip_packet.ttl)
-    entries[8].insert(0, default_ip_packet.proto)
+    entries[4].insert(0, int(default_ip_packet.id))
+    entries[5].insert(0, int(default_ip_packet.flags))
+    entries[6].insert(0, int(default_ip_packet.frag))
+    entries[7].insert(0, int(default_ip_packet.ttl))
+    entries[8].insert(0, int(default_ip_packet.proto))
     entries[9].insert(0, str(default_ip_packet.chksum))
     entries[10].insert(0, default_ip_packet.src)
     entries[11].insert(0, default_gateway)
@@ -364,33 +367,34 @@ def send_ip_packet(entries, send_packet_button):
     """
     if send_packet_button['text'] == '发送':
         ip_version = int(entries[0].get())
-        ip_ihl = entries[1].get()
-        ip_tos = entries[2].get()
-        ip_len = entries[3].get()
-        ip_id = entries[4].get()
-        ip_flags = entries[5].get()
-        ip_frag = entries[6].get()
-        ip_ttl = entries[7].get()
-        ip_proto = entries[8].get()
+        ip_tos = int(entries[2].get())
+        ip_id = int(entries[4].get())
+        ip_flags = int(entries[5].get())
+        ip_frag = int(entries[6].get())
+        ip_ttl = int(entries[7].get())
         ip_src = entries[10].get()
         ip_dst = entries[11].get()
         
         packet_to_send = IP()
         packet_to_send.version=ip_version
-        packet_to_send.ihl=ip_ihl
         packet_to_send.tos=ip_tos
-        packet_to_send.len=ip_len
         packet_to_send.id=ip_id
-        if(ip_flags != ''):
-            packet_to_send.flags=ip_flags
+        packet_to_send.flags=ip_flags
         packet_to_send.frag=ip_frag
         packet_to_send.ttl=ip_ttl
-#        packet_to_send.proto=ip_proto
         packet_to_send.src=ip_src
         packet_to_send.dst=ip_dst
         
         packet_to_send = IP(raw(packet_to_send))
+        
+        entries[1].delete(0, END)
+        entries[3].delete(0, END)
+        entries[9].delete(0, END)
+        entries[1].insert(0, int(packet_to_send.ihl))
+        entries[3].insert(0, int(packet_to_send.len))
         entries[9].insert(0, hex(packet_to_send.chksum))
+        
+        packet_to_send.show()
 
         # 开一个线程用于连续发送数据包
         t = threading.Thread(target=send_packet, args=(packet_to_send,))
@@ -434,29 +438,27 @@ def create_default_tcp_packet(entries):
     """
     clear_protocol_editor(entries)
     
-    default_ip_packet = IP()
-    default_tcp_packet = TCP()
+    default_tcp_packet = IP()/TCP()
     
-    entries[0].insert(0, default_tcp_packet.sport)
-    entries[1].insert(0, default_tcp_packet.dport)
-    entries[2].insert(0, default_tcp_packet.seq)
-    entries[3].insert(0, default_tcp_packet.ack)
+    entries[0].insert(0, int(default_tcp_packet.sport))
+    entries[1].insert(0, int(default_tcp_packet.dport))
+    entries[2].insert(0, int(default_tcp_packet.seq))
+    entries[3].insert(0, int(default_tcp_packet.ack))
     entries[4].insert(0, str(default_tcp_packet.dataofs))
-    entries[5].insert(0, default_tcp_packet.flags)
-    entries[6].insert(0, default_tcp_packet.window)
+    entries[5].insert(0, int(default_tcp_packet.flags))
+    entries[6].insert(0, int(default_tcp_packet.window))
     entries[7].insert(0, str(default_tcp_packet.chksum))
     
-    entries[8].insert(0, default_ip_packet.version)
-    entries[9].insert(0, str(default_ip_packet.ihl))
-    entries[10].insert(0, str(default_ip_packet.len))
-    entries[11].insert(0, default_ip_packet.id)
-    entries[12].insert(0, default_ip_packet.flags)
-    entries[13].insert(0, default_ip_packet.frag)
-    entries[14].insert(0, default_ip_packet.ttl)
-    entries[15].insert(0, str(default_ip_packet.chksum))
-    entries[16].insert(0, default_ip_packet.src)
+    entries[8].insert(0, int(default_tcp_packet.version))
+    entries[9].insert(0, str(default_tcp_packet.ihl))
+    entries[10].insert(0, str(default_tcp_packet.len))
+    entries[11].insert(0, int(default_tcp_packet.id))
+    entries[12].insert(0, int(default_tcp_packet.flags))
+    entries[13].insert(0, int(default_tcp_packet.frag))
+    entries[14].insert(0, int(default_tcp_packet.ttl))
+    entries[15].insert(0, int(default_tcp_packet.proto))
+    entries[16].insert(0, default_tcp_packet.src)
     entries[17].insert(0, default_gateway)
-
 
 def send_tcp_packet(entries, send_packet_button):
     """
@@ -472,16 +474,14 @@ def send_tcp_packet(entries, send_packet_button):
         tcp_seq = int(entries[2].get())
         tcp_ack = int(entries[3].get())
         tcp_dataofs = entries[4].get()
-        tcp_flags = entries[5].get()
+        tcp_flags = int(entries[5].get())
         tcp_window = int(entries[6].get())
         
         ip_version = int(entries[8].get())
-        ip_ihl = entries[9].get()
-        ip_len = entries[10].get()
-        ip_id = entries[11].get()
-        ip_flags = entries[12].get()
-        ip_frag = entries[13].get()
-        ip_ttl = entries[14].get()
+        ip_id = int(entries[11].get())
+        ip_flags = int(entries[12].get())
+        ip_frag = int(entries[13].get())
+        ip_ttl = int(entries[14].get())
         ip_src = entries[16].get()
         ip_dst = entries[17].get()
         
@@ -494,10 +494,10 @@ def send_tcp_packet(entries, send_packet_button):
         tcp.flags=tcp_flags
         tcp.window=tcp_window
         
+        tcp.show()
+        
         ip = IP()
         ip.version=ip_version
-        ip.ihl=ip_ihl
-        ip.len=ip_len
         ip.id=ip_id
         ip.flags=ip_flags
         ip.frag=ip_frag
@@ -505,13 +505,18 @@ def send_tcp_packet(entries, send_packet_button):
         ip.src=ip_src
         ip.dst=ip_dst
         
+        ip.show()
+        
         ip = IP(raw(ip))
-        entries[15].insert(0, str(ip.chksum))
+        entries[15].insert(0, hex(ip.chksum))
         
-        tcp = TCP(raw(tcp))
-        entries[7].insert(0, str(tcp.chksum))
+        packet_to_send = IP()/TCP()
         
-        packet_to_send = tcp/ip
+        packet_to_send = raw(packet_to_send)
+        entries[7].insert(0, hex(packet_to_send.chksum))
+        
+        packet_to_send.show()
+        
 
         # 开一个线程用于连续发送数据包
         t = threading.Thread(target=send_packet, args=(packet_to_send,))
@@ -582,11 +587,14 @@ def send_http_packet(entries, send_packet_button):
         tcp = TCP()
         tcp.sport=http_sport
         tcp.dport=http_dport
+        tcp.show()
         
         ip = IP()
         ip.src=http_src
         ip.dst=http_dst
+        ip.show()
         packet_to_send = tcp/ip
+        packet_to_send.show()
 
         # 开一个线程用于连续发送数据包
         t = threading.Thread(target=send_packet, args=(packet_to_send,))
