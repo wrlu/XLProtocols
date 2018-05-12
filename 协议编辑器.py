@@ -1,4 +1,3 @@
-# coding=utf-8
 import datetime
 import tkinter
 from tkinter import *
@@ -328,13 +327,13 @@ def create_default_icmp_packet(entries):
     clear_protocol_editor(entries)
     default_icmp_packet = IP()/ICMP()
     entries[0].insert(0, int(default_icmp_packet.type))
-    entries[1].insert(0, str(default_icmp_packet.chksum))
+    entries[1].insert(0, str(default_icmp_packet[ICMP].chksum))
     entries[2].insert(0, int(default_icmp_packet.version))
     entries[3].insert(0, int(default_icmp_packet.id))
     entries[4].insert(0, int(default_icmp_packet.flags))
     entries[5].insert(0, int(default_icmp_packet.frag))
     entries[6].insert(0, int(default_icmp_packet.ttl))
-    entries[7].insert(0, str(default_icmp_packet.chksum))
+    entries[7].insert(0, str(default_icmp_packet[IP].chksum))
     entries[8].insert(0, default_icmp_packet.src)
     entries[9].insert(0, default_dst)
     
@@ -512,7 +511,7 @@ def create_default_tcp_packet(entries):
     entries[4].insert(0, str(default_tcp_packet.dataofs))
     entries[5].insert(0, 'S')
     entries[6].insert(0, int(default_tcp_packet.window))
-    entries[7].insert(0, str(default_tcp_packet.chksum))
+    entries[7].insert(0, str(default_tcp_packet[TCP].chksum))
     
     entries[8].insert(0, int(default_tcp_packet.version))
     entries[9].insert(0, str(default_tcp_packet.tos))
@@ -520,7 +519,7 @@ def create_default_tcp_packet(entries):
     entries[11].insert(0, int(default_tcp_packet.flags))
     entries[12].insert(0, int(default_tcp_packet.frag))
     entries[13].insert(0, int(default_tcp_packet.ttl))
-    entries[14].insert(0, str(default_tcp_packet.chksum))
+    entries[14].insert(0, str(default_tcp_packet[IP].chksum))
     entries[15].insert(0, default_tcp_packet.src)
     entries[16].insert(0, default_dst)
 
@@ -630,14 +629,14 @@ def create_default_udp_packet(entries):
     default_udp_packet = IP()/UDP()
     entries[0].insert(0, int(default_udp_packet.sport))
     entries[1].insert(0, int(default_udp_packet.dport))
-    entries[2].insert(0, str(default_udp_packet.chksum))
+    entries[2].insert(0, str(default_udp_packet[UDP].chksum))
     
     entries[3].insert(0, int(default_udp_packet.version))
     entries[4].insert(0, int(default_udp_packet.id))
     entries[5].insert(0, int(default_udp_packet.flags))
     entries[6].insert(0, int(default_udp_packet.frag))
     entries[7].insert(0, int(default_udp_packet.ttl))
-    entries[8].insert(0, str(default_udp_packet.chksum))
+    entries[8].insert(0, str(default_udp_packet[IP].chksum))
     entries[9].insert(0, default_udp_packet.src)
     entries[10].insert(0, default_dst)
 
@@ -780,8 +779,6 @@ def send_http_packet(entries, send_packet_button):
 :type packet_to_send: 待发送的数据包
 """
 def send_packet(packet_to_send):
-        
-    # print(packet.show(dump=True))
     # 对发送的数据包次数进行计数，用于计算发送速度
     n = 0
     stop_sending.clear()
