@@ -52,8 +52,6 @@ def create_protocols_tree():
     # 应用层
     applicatoin_layer_tree_entry = protocols_tree.insert("", 0, "应用层", text="应用层")  # ""表示父节点是根
     http_packet_tree_entry = protocols_tree.insert(applicatoin_layer_tree_entry, 1, "HTTP报文", text="HTTP报文")
-    dns_packet_tree_entry = protocols_tree.insert(applicatoin_layer_tree_entry, 1, "DNS报文", text="DNS报文")
-    # 运输层
     transfer_layer_tree_entry = protocols_tree.insert("", 1, "运输层", text="运输层")
     tcp_packet_tree_entry = protocols_tree.insert(transfer_layer_tree_entry, 0, "TCP报文", text="TCP报文")
     udp_packet_tree_entry = protocols_tree.insert(transfer_layer_tree_entry, 1, "UDP报文", text="UDP报文")
@@ -118,8 +116,6 @@ def on_click_protocols_tree(event):
         create_udp_sender()
     elif selected_item[0] == "HTTP报文":
         create_http_sender()
-    elif selected_item[0] == "DNS报文":
-        create_dns_sender()
 
 """
 创建协议字段编辑区
@@ -758,14 +754,12 @@ def send_http_packet(entries, send_packet_button):
         tcp = TCP()
         tcp.sport=http_sport
         tcp.dport=http_dport
-        tcp.show()
         
         ip = IP()
         ip.src=http_src
         ip.dst=http_dst
-        ip.show()
-        packet_to_send = tcp/ip
-        packet_to_send.show()
+        packet_to_send = ip/tcp/http_options
+        packet_to_send.show2()
                 
         # 开一个线程用于连续发送数据报文
         t = threading.Thread(target=send_packet, args=(packet_to_send,))
@@ -830,3 +824,4 @@ if __name__ == '__main__':
     main_panedwindow.pack(fill=BOTH, expand=1)
     # 启动消息处理
     tk.mainloop()
+  
