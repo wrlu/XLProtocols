@@ -129,14 +129,14 @@ def resolvePacket(pkg):
 :return: None
 """
 def on_click_packet_list_tree(event):
-    
-    selected_item = event.widget.selection()  # event.widget获取Treeview对象，调用selection获取选择对象名称
+    global sniff_array
+    # event.widget获取Treeview对象，调用selection获取选择对象名称
+    selected_item = event.widget.selection()
     # 清空packet_dissect_tree上现有的内容
     packet_dissect_tree.delete(*packet_dissect_tree.get_children())
     # 设置协议解析区的宽度
     packet_dissect_tree.column('Dissect', width=packet_list_frame.winfo_width())
-    # !!!!!!!!!!!!!!!测试用的数据包!!!!!!!!!!!!!!要求换成你抓到的数据包!!!!!!!!!!!!!!!!!!!
-    packet = IP()/TCP(dport=80)
+    packet = sniff_array[int(selected_item[0])-1]
     lines = (packet.show(dump=True)).split('\n')
     last_tree_entry = None
     for line in lines:
@@ -247,4 +247,3 @@ main_panedwindow.pack(fill=BOTH, expand=1)
 status_bar = StatusBar(tk)
 status_bar.pack(side=BOTTOM, fill=X)
 tk.mainloop()
-
