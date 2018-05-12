@@ -448,7 +448,7 @@ def send_ip_packet(entries, send_packet_button):
         ip_version = int(entries[0].get())
         ip_id = int(entries[1].get())
         ip_flags = int(entries[2].get())
-        ip_frag = int(entries[4].get())
+        ip_frag = int(entries[3].get())
         ip_ttl = int(entries[4].get())
         ip_src = entries[7].get()
         ip_dst = entries[8].get()
