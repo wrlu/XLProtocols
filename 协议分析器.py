@@ -104,20 +104,34 @@ def resolvePacket(pkg):
         sniff_count = sniff_count + 1
         sniff_array.append(pkg)
         pkg_time = timestamp2time(pkg.time)
-        
+        pkg.show()
         # 推导数据包的协议类型
-        proto_names = ['TCP', 'UDP', 'ICMP', 'IP', 'ARP', 'Ether', 'Unknown']
+        proto_names = ['TCP', 'UDP', 'ICMP', 'IPv6', 'IP', 'ARP', 'Ether', 'Unknown']
         proto = ''
         for pn in proto_names:
             if pn in pkg:
                 proto = pn
                 break
-        if proto == 'Ether' or proto == 'ARP':
+        if proto == 'Ether' or proto == 'ARP' or proto == 'Unknown':
             src = pkg[Ether].src
             dst = pkg[Ether].dst
-        else:
+        elif proto == 'TCP' or proto == 'UDP' or proto == 'ICMP':
+            if 'IPv6' in pkg:
+                src = pkg[IPv6].src
+                dst = pkg[IPv6].dst
+            elif 'IP' in pkg:
+                src = pkg[IP].src
+                dst = pkg[IP].dst
+        elif proto == 'IP':
             src = pkg[IP].src
             dst = pkg[IP].dst
+        elif proto == 'IPv6':
+            src = pkg[IPv6].src
+            dst = pkg[IPv6].dst
+        else:
+            src = 'Unknown'
+            dst = 'Unknown'
+
         length = len(pkg)
         info = pkg.summary()
         packet_list_tree.insert("", 'end', sniff_count, text=sniff_count, values=(sniff_count, pkg_time, src, dst, proto, length, info))
@@ -136,7 +150,53 @@ def on_click_packet_list_tree(event):
     packet_dissect_tree.delete(*packet_dissect_tree.get_children())
     # 设置协议解析区的宽度
     packet_dissect_tree.column('Dissect', width=packet_list_frame.winfo_width())
+    # 获得点击的数据包
     packet = sniff_array[int(selected_item[0])-1]
+    # 检查校验和
+    # 推导数据包的协议类型
+    proto_names = ['TCP', 'UDP', 'ICMP', 'IP', 'ARP', 'Ether', 'Unknown']
+    proto = ''
+    for pn in proto_names:
+        if pn in packet:
+            proto = pn
+            break
+    # 任何数据包必然是一个以太网帧，计算正确的校验和
+    packetCheckSum = Ether(raw(packet))
+    # 校验和检查结果
+    isIPChkSum = 'Error'
+    isTCPChkSum = 'Error'
+    isUDPChkSum = 'Error'
+    # 检查数据包的校验和
+    if proto == 'TCP':
+        # 检查IP校验和
+        if packetCheckSum[IP].chksum == packet[IP].chksum:
+            isIPChkSum = 'OK'
+        else:
+            isIPChkSum = 'Error'
+        # 检查TCP校验和
+        if packetCheckSum[TCP].chksum == packet[TCP].chksum:
+            isTCPChkSum = 'OK'
+        else:
+            isTCPChkSum = 'Error'
+    elif proto == 'UDP':
+        # 检查IP校验和
+        if packetCheckSum[IP].chksum == packet[IP].chksum:
+            isIPChkSum = 'OK'
+        else:
+            isIPChkSum = 'Error'
+        # 检查UDP校验和
+        if packetCheckSum[UDP].chksum == packet[UDP].chksum:
+            isUDPChkSum = 'OK'
+        else:
+            isUDPChkSum = 'Error'
+    elif proto == 'IP':
+        # 检查IP校验和
+        if packetCheckSum[IP].chksum == packet[IP].chksum:
+            isIPChkSum = 'OK'
+        else:
+            isIPChkSum = 'Error'
+
+    # 按照协议层次显示数据包
     lines = (packet.show(dump=True)).split('\n')
     last_tree_entry = None
     for line in lines:
@@ -149,9 +209,18 @@ def on_click_packet_list_tree(event):
         # 根据新插入数据项的长度动态调整协议解析区的宽度
         if packet_dissect_tree.column('Dissect', width=None) < col_width:
             packet_dissect_tree.column('Dissect', width=col_width)
-    #!!!!!!!!!!!!!!!!此处没实现到抓到的数据包的校验和的检查!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    #!!!!!!!!!!!!!!!!要求在此处补充代码检查数据包校验包是否正确，包括TCP/UDP/IP包的校验和!!!!!!!!!!!
-    
+
+    # 插入校验和显示区
+    last_tree_entry = packet_dissect_tree.insert('', 'end', text='chksum')
+    if proto == 'TCP':
+        packet_dissect_tree.insert(last_tree_entry, 'end', text='IP chksum:'+isIPChkSum)
+        packet_dissect_tree.insert(last_tree_entry, 'end', text='TCP chksum:'+isTCPChkSum)
+    elif proto == 'UDP':
+        packet_dissect_tree.insert(last_tree_entry, 'end', text='IP chksum:'+isIPChkSum)
+        packet_dissect_tree.insert(last_tree_entry, 'end', text='UDP chksum:'+isUDPChkSum)
+    elif proto == "IP":
+        packet_dissect_tree.insert(last_tree_entry, 'end', text='IP chksum:'+isIPChkSum)
+
     # 在hexdump区显示此数据包的十六进制内容
     hexdump_scrolledtext['state'] = 'normal'
     hexdump_scrolledtext.delete(1.0, END)
