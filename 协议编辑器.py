@@ -684,8 +684,6 @@ def send_udp_packet(entries, send_packet_button):
         entries[8].delete(0, END)
         entries[8].insert(0, hex(packet_to_send.chksum))
         
-        packet_to_send.show()
-                
         # 开一个线程用于连续发送数据包
         t = threading.Thread(target=send_packet, args=(packet_to_send,))
         t.setDaemon(True)
@@ -758,7 +756,6 @@ def send_http_packet(entries, send_packet_button):
         ip.src=http_src
         ip.dst=http_dst
         packet_to_send = ip/tcp/http_options
-        packet_to_send.show2()
                 
         # 开一个线程用于连续发送数据报文
         t = threading.Thread(target=send_packet, args=(packet_to_send,))

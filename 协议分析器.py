@@ -6,8 +6,10 @@ from tkinter import font, filedialog
 from tkinter.constants import *
 from tkinter.messagebox import askyesno
 from tkinter.scrolledtext import ScrolledText
+from tkinter.filedialog import *
 from tkinter.ttk import Treeview
 
+from scapy.all import *
 from scapy.layers.inet import *
 from scapy.layers.l2 import *
 
@@ -39,10 +41,13 @@ class StatusBar(Frame):
 def start_capture():
     global sniff_count
     global sniff_array
+    # 如果是停止状态再捕获，提示保存pcap文件
     if stop_sniff.is_set():
         save_captured_data_to_file()
         sniff_count = 0
         sniff_array = []
+        packet_list_tree.delete(*packet_list_tree.get_children())
+        packet_dissect_tree.delete(*packet_dissect_tree.get_children())
         stop_sniff.clear()
         pause_sniff.clear()
     else:
@@ -57,6 +62,7 @@ def start_capture():
     pause_button['state'] = 'normal'
     stop_button['state'] = 'normal'
     save_button['state'] = 'disabled'
+    open_button['state'] = 'disabled'
 
 # 暂停按钮单击响应函数
 def pause_capture():
@@ -75,15 +81,22 @@ def stop_capture():
     pause_button['text'] = '暂停'
     stop_button['state'] = 'disabled'
     save_button['state'] = 'normal'
+    open_button['state'] = 'normal'
+
+def on_stop_sniff(packet):
+    return stop_sniff.is_set()==True
 
 # 将抓到的数据包保存为pcap格式的文件
 def save_captured_data_to_file():
-    wrpcap("capture.pcap", sniff_array)
+    filename = asksaveasfilename(defaultextension = '.pcap',filetypes = [('PCAP Files', '*.pcap')],title = "保存到pcap文件")
+    if filename != '':
+        wrpcap(filename, sniff_array)
+    
 
 # 退出按钮单击响应函数,退出程序前要提示用户保存已经捕获的数据
 def quit_program():
     if sniff_count != 0:
-        pass
+        save_captured_data_to_file()
     exit(0)
 
 # 时间戳转为格式化的时间字符串
@@ -94,7 +107,23 @@ def timestamp2time(timestamp):
 
 # 开始捕获数据报文
 def sniffPacket():
-    sniff(prn=lambda x: resolvePacket(x))
+    sniff(prn=lambda x: resolvePacket(x), filter=fitler_entry.get(), stop_filter=lambda x: on_stop_sniff(x))
+
+def readPcap():
+    filename = askopenfilename(filetypes = [('PCAP Files', '*.pcap')],title = "打开pcap文件")
+    if filename != '':
+        global sniff_count
+        global sniff_array
+        # 如果是停止状态再打开，提示保存pcap文件
+        if sniff_count != 0:
+            save_captured_data_to_file()
+            sniff_count = 0
+            sniff_array = []
+            packet_list_tree.delete(*packet_list_tree.get_children())
+            packet_dissect_tree.delete(*packet_dissect_tree.get_children())
+            stop_sniff.clear()
+            pause_sniff.clear()
+        sniff(prn=lambda x: resolvePacket(x), filter=fitler_entry['text'], offline=filename)
 
 # 在显示区显示数据报文
 def resolvePacket(pkg):
@@ -104,7 +133,6 @@ def resolvePacket(pkg):
         sniff_count = sniff_count + 1
         sniff_array.append(pkg)
         pkg_time = timestamp2time(pkg.time)
-        pkg.show()
         # 推导数据包的协议类型
         proto_names = ['TCP', 'UDP', 'ICMP', 'IPv6', 'IP', 'ARP', 'Ether', 'Unknown']
         proto = ''
@@ -112,26 +140,16 @@ def resolvePacket(pkg):
             if pn in pkg:
                 proto = pn
                 break
-        if proto == 'Ether' or proto == 'ARP' or proto == 'Unknown':
-            src = pkg[Ether].src
-            dst = pkg[Ether].dst
-        elif proto == 'TCP' or proto == 'UDP' or proto == 'ICMP':
+        if proto == 'ARP' or proto == 'Ether':
+            src = pkg.src
+            dst = pkg.dst
+        else:
             if 'IPv6' in pkg:
                 src = pkg[IPv6].src
                 dst = pkg[IPv6].dst
             elif 'IP' in pkg:
                 src = pkg[IP].src
                 dst = pkg[IP].dst
-        elif proto == 'IP':
-            src = pkg[IP].src
-            dst = pkg[IP].dst
-        elif proto == 'IPv6':
-            src = pkg[IPv6].src
-            dst = pkg[IPv6].dst
-        else:
-            src = 'Unknown'
-            dst = 'Unknown'
-
         length = len(pkg)
         info = pkg.summary()
         packet_list_tree.insert("", 'end', sniff_count, text=sniff_count, values=(sniff_count, pkg_time, src, dst, proto, length, info))
@@ -152,14 +170,6 @@ def on_click_packet_list_tree(event):
     packet_dissect_tree.column('Dissect', width=packet_list_frame.winfo_width())
     # 获得点击的数据包
     packet = sniff_array[int(selected_item[0])-1]
-    # 检查校验和
-    # 推导数据包的协议类型
-    proto_names = ['TCP', 'UDP', 'ICMP', 'IP', 'ARP', 'Ether', 'Unknown']
-    proto = ''
-    for pn in proto_names:
-        if pn in packet:
-            proto = pn
-            break
     # 任何数据包必然是一个以太网帧，计算正确的校验和
     packetCheckSum = Ether(raw(packet))
     # 校验和检查结果
@@ -167,35 +177,31 @@ def on_click_packet_list_tree(event):
     isTCPChkSum = 'Error'
     isUDPChkSum = 'Error'
     # 检查数据包的校验和
-    if proto == 'TCP':
+    if 'IP' in packet:
         # 检查IP校验和
         if packetCheckSum[IP].chksum == packet[IP].chksum:
             isIPChkSum = 'OK'
         else:
             isIPChkSum = 'Error'
+    elif 'IPv6' in packet:
+        # 检查IPv6校验和
+        if packetCheckSum[IPv6].chksum == packet[IPv6].chksum:
+            isIPChkSum = 'OK'
+        else:
+            isIPChkSum = 'Error'
+    if 'TCP' in packet:
         # 检查TCP校验和
         if packetCheckSum[TCP].chksum == packet[TCP].chksum:
             isTCPChkSum = 'OK'
         else:
             isTCPChkSum = 'Error'
-    elif proto == 'UDP':
-        # 检查IP校验和
-        if packetCheckSum[IP].chksum == packet[IP].chksum:
-            isIPChkSum = 'OK'
-        else:
-            isIPChkSum = 'Error'
+    elif 'UDP' in packet:
         # 检查UDP校验和
         if packetCheckSum[UDP].chksum == packet[UDP].chksum:
             isUDPChkSum = 'OK'
         else:
             isUDPChkSum = 'Error'
-    elif proto == 'IP':
-        # 检查IP校验和
-        if packetCheckSum[IP].chksum == packet[IP].chksum:
-            isIPChkSum = 'OK'
-        else:
-            isIPChkSum = 'Error'
-
+    
     # 按照协议层次显示数据包
     lines = (packet.show(dump=True)).split('\n')
     last_tree_entry = None
@@ -211,15 +217,14 @@ def on_click_packet_list_tree(event):
             packet_dissect_tree.column('Dissect', width=col_width)
 
     # 插入校验和显示区
-    last_tree_entry = packet_dissect_tree.insert('', 'end', text='chksum')
-    if proto == 'TCP':
-        packet_dissect_tree.insert(last_tree_entry, 'end', text='IP chksum:'+isIPChkSum)
-        packet_dissect_tree.insert(last_tree_entry, 'end', text='TCP chksum:'+isTCPChkSum)
-    elif proto == 'UDP':
-        packet_dissect_tree.insert(last_tree_entry, 'end', text='IP chksum:'+isIPChkSum)
-        packet_dissect_tree.insert(last_tree_entry, 'end', text='UDP chksum:'+isUDPChkSum)
-    elif proto == "IP":
-        packet_dissect_tree.insert(last_tree_entry, 'end', text='IP chksum:'+isIPChkSum)
+    if 'IP' in packet or 'IPv6' in packet:
+        last_tree_entry = packet_dissect_tree.insert('', 'end', text='校验和')
+        packet_dissect_tree.insert(last_tree_entry, 'end', text='IP校验和:'+isIPChkSum)
+    if 'TCP' in packet:
+        packet_dissect_tree.insert(last_tree_entry, 'end', text='TCP校验和:'+isTCPChkSum)
+    elif 'UDP' in packet:
+        packet_dissect_tree.insert(last_tree_entry, 'end', text='UDP校验和:'+isUDPChkSum)
+    
 
     # 在hexdump区显示此数据包的十六进制内容
     hexdump_scrolledtext['state'] = 'normal'
@@ -227,8 +232,8 @@ def on_click_packet_list_tree(event):
     hexdump_scrolledtext.insert(END, hexdump(packet, dump=True))
     hexdump_scrolledtext['state'] = 'disabled'
 
-# ---------------------以下代码负责绘制GUI界面---------------------
 
+# ---------------------以下代码负责绘制GUI界面---------------------
 tk = tkinter.Tk()
 tk.title("协议分析器")
 # 带水平分割条的主窗体
@@ -239,11 +244,13 @@ toolbar = Frame(tk)
 start_button = Button(toolbar, width=8, text="开始", command=start_capture)
 pause_button = Button(toolbar, width=8, text="暂停", command=pause_capture)
 stop_button = Button(toolbar, width=8, text="停止", command=stop_capture)
-save_button = Button(toolbar, width=8, text="保存数据", command=save_captured_data_to_file)
+open_button = Button(toolbar, width=8, text="打开pcap", command=readPcap)
+save_button = Button(toolbar, width=8, text="保存到pcap", command=save_captured_data_to_file)
 quit_button = Button(toolbar, width=8, text="退出", command=quit_program)
 start_button['state'] = 'normal'
 pause_button['state'] = 'disabled'
 stop_button['state'] = 'disabled'
+open_button['state'] = 'normal'
 save_button['state'] = 'disabled'
 quit_button['state'] = 'normal'
 filter_label = Label(toolbar, width=10, text="BPF过滤器：")
@@ -251,7 +258,8 @@ fitler_entry = Entry(toolbar)
 start_button.pack(side=LEFT, padx=5)
 pause_button.pack(side=LEFT, after=start_button, padx=10, pady=10)
 stop_button.pack(side=LEFT, after=pause_button, padx=10, pady=10)
-save_button.pack(side=LEFT, after=stop_button, padx=10, pady=10)
+open_button.pack(side=LEFT, after=stop_button, padx=10, pady=10)
+save_button.pack(side=LEFT, after=open_button, padx=10, pady=10)
 quit_button.pack(side=LEFT, after=save_button, padx=10, pady=10)
 filter_label.pack(side=LEFT, after=quit_button, padx=0, pady=10)
 fitler_entry.pack(side=LEFT, after=filter_label, padx=20, pady=10, fill=X, expand=YES)
