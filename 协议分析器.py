@@ -107,7 +107,10 @@ def timestamp2time(timestamp):
 
 # 开始捕获数据报文
 def sniffPacket():
-    sniff(prn=lambda x: resolvePacket(x), filter=fitler_entry.get(), stop_filter=lambda x: on_stop_sniff(x))
+    print(fitler_entry.get())
+#    sniff(prn=lambda x: resolvePacket(x), filter=fitler_entry.get(), stop_filter=lambda x: on_stop_sniff(x))
+    sniff(prn=lambda x: resolvePacket(x), filter=fitler_entry.get(), stop_filter=lambda x : stop_sniff.is_set())
+
 
 def readPcap():
     filename = askopenfilename(filetypes = [('PCAP Files', '*.pcap')],title = "打开pcap文件")
